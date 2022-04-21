@@ -1,0 +1,35 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Enable AWS Config
+
+Conditions:
+  cIncludeGlobalResourceTypes: !Equals [ !Ref "AWS::Region", "eu-west-1"]
+  cCreateServiceLinkedRole: !Equals [ !Ref "AWS::Region", "eu-west-1"]
+
+Parameters:
+  DeliveryChannelS3Bucket:
+    Type: String
+
+Resources:
+  ServiceLinkedRoleForConfig:
+    Type: AWS::IAM::ServiceLinkedRole
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Condition: cCreateServiceLinkedRole
+    Properties:
+      AWSServiceName: config.amazonaws.com
+      Description: A service-linked role required for AWS Config to access your resources.
+
+  ConfigRecorder:
+    Type: AWS::Config::ConfigurationRecorder
+    Properties:
+      Name: 'default'
+      RoleARN: !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/config.amazonaws.com/AWSServiceRoleForConfig
+      RecordingGroup:
+        AllSupported: true
+        IncludeGlobalResourceTypes: !If [ cIncludeGlobalResourceTypes, True, False ]
+
+  ConfigDeliveryChannel:
+    Type: AWS::Config::DeliveryChannel
+    Properties:
+      Name: 'default'
+      S3BucketName: !Ref DeliveryChannelS3Bucket
